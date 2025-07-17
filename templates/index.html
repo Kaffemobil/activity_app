@@ -129,6 +129,7 @@
         .flatpickr-day.selected.inRange, .flatpickr-day.selected:hover.inRange, .flatpickr-day.startRange.inRange, .flatpickr-day.startRange:hover.inRange, .flatpickr-day.endRange.inRange, .flatpickr-day.endRange:hover.inRange {
             background-color: theme('colors.primaryMedium');
             border-color: theme('colors.primaryMedium');
+            color: theme('colors.textLight');
         }
         .flatpickr-months .flatpickr-month {
             color: theme('colors.primaryDark');
@@ -192,6 +193,7 @@
                             {% endfor %}
                         </select>
                         <button onclick="showAddTypePopup()" class="bg-primaryMedium text-textLight px-4 py-2 rounded-md hover:bg-buttonHover transition-colors duration-200 shadow-sm">Add New Type</button>
+                        <button onclick="removeType()" class="bg-red-500 text-textLight px-4 py-2 rounded-md hover:bg-red-600 transition-colors duration-200 shadow-sm">Remove Type</button>
                     </div>
                 </div>
 
@@ -515,6 +517,41 @@
             }
         }
 
+        async function removeType() {
+            const typeDropdown = document.getElementById('typeDropdown');
+            const typeToRemove = typeDropdown.value;
+
+            if (!typeToRemove) {
+                alert('Please select a type to remove.');
+                return;
+            }
+
+            showConfirmationModal('Remove Type', `Are you sure you want to remove the type "${typeToRemove}"? This action cannot be undone if successful.`, async () => {
+                try {
+                    const formData = new FormData();
+                    formData.append('type_name', typeToRemove);
+
+                    const response = await fetch('/remove_type', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        await fetchTaskTypes(); // Refresh dropdown
+                        alert(result.message);
+                        closeConfirmationModal();
+                    } else {
+                        alert(result.message);
+                        closeConfirmationModal();
+                    }
+                } catch (error) {
+                    console.error('Error removing type:', error);
+                    alert('Failed to remove type. Please try again.');
+                    closeConfirmationModal();
+                }
+            });
+        }
+
         async function fetchTaskTypes() {
             try {
                 const response = await fetch('/get_types');
@@ -528,6 +565,7 @@
                         option.textContent = type;
                         typeDropdown.appendChild(option);
                     });
+                    typeDropdown.value = types[0]; // Select the first type by default
                 } else {
                     typeDropdown.innerHTML = '<option value="">No types available</option>';
                 }

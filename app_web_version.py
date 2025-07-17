@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 import pandas as pd
 from flask import Flask, render_template, request, redirect, url_for, jsonify
+import xlsxwriter # Ensure this is imported for ExcelWriter to work if needed
 
 # Define file paths for data storage
 # In a web app, these files will be stored relative to the app's root directory
@@ -195,6 +196,10 @@ def mark_done():
                         "duration_minutes": round(minutes, 2)
                     }])
                     log_df = pd.concat([log_df, new_log_entry_df], ignore_index=True)
+                
+                # Ensure 'date' column is formatted as string before saving to CSV
+                # This line was added in the previous turn, ensure it's here
+                log_df['date'] = log_df['date'].dt.strftime('%Y-%m-%d') 
                 save_time_log(log_df)
             except ValueError:
                 return jsonify({"success": False, "message": "Please enter a numeric value for hours."}), 400
@@ -256,6 +261,30 @@ def add_type():
         return jsonify({"success": True, "message": "Type added successfully."})
     else:
         return jsonify({"success": False, "message": "Type already exists."}), 409
+
+@app.route('/remove_type', methods=['POST'])
+def remove_type():
+    """API endpoint to remove a task type."""
+    type_to_remove = request.form['type_name'].strip()
+    if not type_to_remove:
+        return jsonify({"success": False, "message": "Type name cannot be empty."}), 400
+
+    types_df = load_data(TYPES_FILE, ["type"])
+    
+    if type_to_remove not in types_df["type"].tolist():
+        return jsonify({"success": False, "message": "Type not found."}), 404
+
+    # Check if any tasks are associated with this type
+    tasks_df = load_tasks()
+    if not tasks_df.empty and (tasks_df["type"] == type_to_remove).any():
+        return jsonify({"success": False, "message": f"Cannot remove type '{type_to_remove}' because tasks are associated with it. Please reassign or remove those tasks first."}), 409 # Conflict
+
+    # Remove the type
+    types_df = types_df[types_df["type"] != type_to_remove].reset_index(drop=True)
+    save_data(types_df, TYPES_FILE)
+    
+    return jsonify({"success": True, "message": f"Type '{type_to_remove}' removed successfully."})
+
 
 @app.route('/get_types')
 def get_types():
@@ -319,21 +348,19 @@ def export_data(export_format):
     # Actual file download would involve sending a file stream.
     # This part would need more robust handling for production (e.g., temporary files, proper headers)
 
-    # Example of how you might generate and send a file (simplified)
     from io import BytesIO
-    from flask import send_file
+    from flask import send_file, make_response
 
     if export_format == "csv":
-        tasks_output = BytesIO()
-        tasks_df.to_csv(tasks_output, index=False)
-        tasks_output.seek(0)
-
-        time_log_output = BytesIO()
-        time_log_df.to_csv(time_log_output, index=False)
-        time_log_output.seek(0)
-        
-        # In a real app, you'd likely zip these or offer separate downloads.
-        # For this initial version, we'll just indicate success.
+        # Create a combined CSV or separate CSVs
+        # For simplicity, let's return a message for now.
+        # A full implementation would involve zipping or separate downloads.
+        # Example of sending a single CSV:
+        # csv_output = tasks_df.to_csv(index=False)
+        # response = make_response(csv_output)
+        # response.headers["Content-Disposition"] = "attachment; filename=tasks.csv"
+        # response.headers["Content-type"] = "text/csv"
+        # return response
         return jsonify({"success": True, "message": "CSV export initiated. (Files would be downloaded in a full implementation)"})
 
     elif export_format == "excel":
@@ -343,7 +370,11 @@ def export_data(export_format):
             time_log_df.to_excel(writer, sheet_name="Time Log", index=False)
         excel_output.seek(0)
         
-        # For now, just indicate success.
+        # Example of sending an Excel file:
+        # response = make_response(excel_output.getvalue())
+        # response.headers["Content-Disposition"] = "attachment; filename=productivity_data.xlsx"
+        # response.headers["Content-type"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        # return response
         return jsonify({"success": True, "message": "Excel export initiated. (File would be downloaded in a full implementation)"})
 
     return jsonify({"success": False, "message": "Invalid export format."}), 400
