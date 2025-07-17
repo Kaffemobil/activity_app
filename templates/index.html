@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Productivity Tracker</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primaryDark: '#0A3D62', // Deep Ocean Blue
+                        primaryMedium: '#2E86DE', // Mid Ocean Blue
+                        accentLight: '#87CEEB', // Sky Blue / Light Ocean
+                        backgroundLight: '#F0F8FF', // AliceBlue (like sea foam/sand)
+                        textDark: '#333333', // Dark text for light backgrounds
+                        textLight: '#FFFFFF', // Light text for dark backgrounds
+                        buttonHover: '#4A90E2', // Slightly lighter blue for hover
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Chart.js CDN for charting -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Flatpickr for date picker -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: theme('colors.backgroundLight');
+            color: theme('colors.textDark');
+        }
+        .tab-button.active {
+            background-color: theme('colors.backgroundLight');
+            color: theme('colors.primaryDark');
+            border-bottom: 2px solid theme('colors.primaryDark');
+        }
+        .tab-button {
+            background-color: theme('colors.primaryDark');
+            color: theme('colors.textLight');
+            padding: 10px 15px;
+            font-weight: bold;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .tab-button:hover:not(.active) {
+            background-color: theme('colors.primaryMedium');
+        }
+        .task-list-item {
+            cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 4px;
+            transition: background-color 0.2s ease;
+        }
+        .task-list-item:hover {
+            background-color: theme('colors.accentLight');
+        }
+        .task-list-item.selected {
+            background-color: theme('colors.accentLight');
+            border: 1px solid theme('colors.primaryMedium');
+        }
+        /* Custom styles for Flatpickr to match theme */
+        .flatpickr-calendar {
+            background-color: theme('colors.backgroundLight');
+            border: 1px solid theme('colors.primaryMedium');
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .flatpickr-day.selected, .flatpickr-day.selected:hover, .flatpickr-day.startRange, .flatpickr-day.startRange:hover, .flatpickr-day.endRange, .flatpickr-day.endRange:hover {
+            background-color: theme('colors.primaryMedium');
+            border-color: theme('colors.primaryMedium');
+            color: theme('colors.textLight');
+        }
+        .flatpickr-day.today:not(.selected) {
+            border-color: theme('colors.primaryMedium');
+            color: theme('colors.primaryMedium');
+        }
+        .flatpickr-day.today:not(.selected):hover {
+            background-color: theme('colors.accentLight');
+        }
+        .flatpickr-day.flatpickr-disabled, .flatpickr-day.flatpickr-disabled:hover {
+            color: #ccc;
+        }
+        .flatpickr-current-month .flatpickr-monthDropdown-months .flatpickr-month,
+        .flatpickr-current-month .flatpickr-monthDropdown-months .flatpickr-month:hover,
+        .flatpickr-current-month .flatpickr-monthDropdown-months .flatpickr-month.active {
+            color: theme('colors.textDark');
+        }
+        .flatpickr-current-month .flatpickr-monthDropdown-months .flatpickr-month:hover {
+            background-color: theme('colors.accentLight');
+        }
+        .flatpickr-current-month .numInputWrapper span.arrowUp:after,
+        .flatpickr-current-month .numInputWrapper span.arrowDown:after {
+            border-color: theme('colors.primaryDark');
+        }
+        .flatpickr-current-month .numInputWrapper span.arrowUp:hover:after,
+        .flatpickr-current-month .numInputWrapper span.arrowDown:hover:after {
+            border-color: theme('colors.primaryMedium');
+        }
+        .flatpickr-months .flatpickr-prev-month, .flatpickr-months .flatpickr-next-month {
+            color: theme('colors.primaryDark');
+        }
+        .flatpickr-months .flatpickr-prev-month:hover, .flatpickr-months .flatpickr-next-month:hover {
+            color: theme('colors.primaryMedium');
+        }
+        .flatpickr-weekday {
+            color: theme('colors.primaryDark');
+            font-weight: bold;
+        }
+        .flatpickr-day {
+            color: theme('colors.textDark');
+        }
+        .flatpickr-day.prevMonthDay, .flatpickr-day.nextMonthDay {
+            color: #aaa;
+        }
+        .flatpickr-day.inRange {
+            background-color: theme('colors.accentLight');
+            border-color: theme('colors.accentLight');
+        }
+        .flatpickr-day.selected.inRange, .flatpickr-day.selected:hover.inRange, .flatpickr-day.startRange.inRange, .flatpickr-day.startRange:hover.inRange, .flatpickr-day.endRange.inRange, .flatpickr-day.endRange:hover.inRange {
+            background-color: theme('colors.primaryMedium');
+            border-color: theme('colors.primaryMedium');
+        }
+        .flatpickr-months .flatpickr-month {
+            color: theme('colors.primaryDark');
+        }
+        .flatpickr-months .flatpickr-month:hover {
+            background-color: theme('colors.accentLight');
+        }
+        .flatpickr-current-month .flatpickr-monthDropdown-months {
+            background-color: theme('colors.backgroundLight');
+            border: 1px solid theme('colors.primaryMedium');
+        }
+        .flatpickr-current-month .flatpickr-monthDropdown-months .flatpickr-month.selected {
+            background-color: theme('colors.primaryMedium');
+            color: theme('colors.textLight');
+        }
+        .flatpickr-current-month .numInputWrapper {
+            color: theme('colors.primaryDark');
+        }
+    </style>
+</head>
+<body class="bg-backgroundLight text-textDark min-h-screen flex flex-col font-inter">
+    <div class="container mx-auto p-4 flex-grow">
+        <h1 class="text-3xl font-bold text-primaryDark mb-6 text-center">Productivity Tracker</h1>
+
+        <!-- Tabs -->
+        <div class="flex justify-center mb-6">
+            <button id="calendarTabBtn" class="tab-button active" onclick="showTab('calendarTab')">Calendar + Tasks</button>
+            <button id="activityTabBtn" class="tab-button ml-2" onclick="showTab('activityTab')">Activity</button>
+        </div>
+
+        <!-- Calendar + Tasks Tab -->
+        <div id="calendarTab" class="tab-content grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Calendar Section -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-semibold text-primaryDark mb-4">Select Date</h2>
+                <input type="text" id="datePicker" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primaryMedium" value="{{ selected_date }}">
+                <div id="calendarContainer" class="mt-4"></div>
+            </div>
+
+            <!-- Task Management Section -->
+            <div class="bg-white p-6 rounded-lg shadow-md flex flex-col">
+                <h2 class="text-xl font-semibold text-primaryDark mb-4">Tasks for <span id="selectedDateDisplay" class="font-bold">{{ selected_date }}</span></h2>
+                
+                <!-- Task List -->
+                <div id="taskList" class="flex-grow border border-gray-300 rounded-md p-3 overflow-y-auto mb-4 min-h-[150px] max-h-[400px]">
+                    <!-- Tasks will be loaded here by JavaScript -->
+                    <p class="text-gray-500 text-center py-4" id="noTasksMessage">No tasks for this date.</p>
+                </div>
+
+                <!-- Task Input Form -->
+                <div class="mb-4">
+                    <label for="taskInput" class="block text-sm font-medium text-textDark mb-1">Task:</label>
+                    <input type="text" id="taskInput" placeholder="Enter new task" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primaryMedium mb-2">
+                    
+                    <label for="typeDropdown" class="block text-sm font-medium text-textDark mb-1">Type:</label>
+                    <div class="flex gap-2 mb-2">
+                        <select id="typeDropdown" class="flex-grow p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primaryMedium">
+                            <!-- Types will be loaded here by JavaScript -->
+                            {% for type in task_types %}
+                                <option value="{{ type }}">{{ type }}</option>
+                            {% endfor %}
+                        </select>
+                        <button onclick="showAddTypePopup()" class="bg-primaryMedium text-textLight px-4 py-2 rounded-md hover:bg-buttonHover transition-colors duration-200 shadow-sm">Add New Type</button>
+                    </div>
+                </div>
+
+                <!-- Task Action Buttons -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button onclick="addTask()" class="bg-primaryMedium text-textLight px-4 py-3 rounded-md hover:bg-buttonHover transition-colors duration-200 shadow-md">Add Task</button>
+                    
+                    <div class="flex items-center gap-2">
+                        <label for="hoursWorkedInput" class="text-sm font-medium text-textDark whitespace-nowrap">Hours Worked (optional):</label>
+                        <input type="number" id="hoursWorkedInput" step="0.01" class="w-24 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primaryMedium">
+                    </div>
+                    <button onclick="markTaskDone()" class="bg-green-500 text-textLight px-4 py-3 rounded-md hover:bg-green-600 transition-colors duration-200 shadow-md">Mark as Done</button>
+                    <button onclick="removeTask()" class="bg-red-500 text-textLight px-4 py-3 rounded-md hover:bg-red-600 transition-colors duration-200 shadow-md">Remove Task</button>
+                    <button onclick="removeAllTasks()" class="bg-red-700 text-textLight px-4 py-3 rounded-md hover:bg-red-800 transition-colors duration-200 shadow-md col-span-full">Remove All Tasks for Date</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Tab -->
+        <div id="activityTab" class="tab-content hidden bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-xl font-semibold text-primaryDark mb-4">Activity Charts</h2>
+            <div class="flex justify-center mb-6 gap-4">
+                <button onclick="refreshCharts()" class="bg-primaryMedium text-textLight px-4 py-3 rounded-md hover:bg-buttonHover transition-colors duration-200 shadow-md">Refresh Charts</button>
+                <button onclick="exportData('csv')" class="bg-gray-600 text-textLight px-4 py-3 rounded-md hover:bg-gray-700 transition-colors duration-200 shadow-md">Export to CSV</button>
+                <button onclick="exportData('excel')" class="bg-gray-600 text-textLight px-4 py-3 rounded-md hover:bg-gray-700 transition-colors duration-200 shadow-md">Export to Excel</button>
+            </div>
+            <div id="chartContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
+                    <h3 class="text-lg font-semibold text-textDark mb-2 text-center">Hours Spent per Task</h3>
+                    <canvas id="taskHoursChart"></canvas>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
+                    <h3 class="text-lg font-semibold text-textDark mb-2 text-center">Daily Time Spent</h3>
+                    <canvas id="dailyTimeChart"></canvas>
+                </div>
+                <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
+                    <h3 class="text-lg font-semibold text-textDark mb-2 text-center">Days Worked per Task Type</h3>
+                    <canvas id="daysPerTypeChart"></canvas>
+                </div>
+            </div>
+            <p id="noActivityMessage" class="text-gray-500 text-center py-8 hidden">No activity data available to display charts.</p>
+        </div>
+    </div>
+
+    <!-- Add New Type Modal -->
+    <div id="addTypeModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-96">
+            <h3 class="text-xl font-semibold text-primaryDark mb-4">Add New Type</h3>
+            <input type="text" id="newTypeInput" placeholder="Enter new type name" class="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primaryMedium mb-4">
+            <div class="flex justify-end gap-2">
+                <button onclick="saveNewType()" class="bg-primaryMedium text-textLight px-4 py-2 rounded-md hover:bg-buttonHover transition-colors duration-200 shadow-sm">Save</button>
+                <button onclick="closeAddTypePopup()" class="bg-gray-300 text-textDark px-4 py-2 rounded-md hover:bg-gray-400 transition-colors duration-200 shadow-sm">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmationModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-96">
+            <h3 class="text-xl font-semibold text-primaryDark mb-4" id="confirmationModalTitle">Confirm Action</h3>
+            <p id="confirmationModalMessage" class="mb-4 text-textDark"></p>
+            <div class="flex justify-end gap-2">
+                <button id="confirmActionButton" class="bg-red-500 text-textLight px-4 py-2 rounded-md hover:bg-red-600 transition-colors duration-200 shadow-sm">Confirm</button>
+                <button onclick="closeConfirmationModal()" class="bg-gray-300 text-textDark px-4 py-2 rounded-md hover:bg-gray-400 transition-colors duration-200 shadow-sm">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedDate = '{{ selected_date }}'; // Initial date from Flask
+        let currentSelectedTask = null; // To store the currently selected task object
+
+        // Initialize Flatpickr
+        const datePicker = flatpickr("#datePicker", {
+            dateFormat: "Y-m-d",
+            defaultDate: selectedDate,
+            inline: true, // Display calendar inline
+            onChange: function(selectedDates, dateStr, instance) {
+                selectedDate = dateStr;
+                document.getElementById('selectedDateDisplay').innerText = dateStr;
+                fetchTasksForDate(dateStr);
+            }
+        });
+
+        // --- Tab Switching Logic ---
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.add('hidden');
+            });
+            document.getElementById(tabId).classList.remove('hidden');
+
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
+            document.getElementById(tabId.replace('Tab', 'TabBtn')).classList.add('active');
+
+            if (tabId === 'activityTab') {
+                refreshCharts();
+            }
+        }
+
+        // --- Task List Management ---
+        async function fetchTasksForDate(date) {
+            try {
+                const response = await fetch(`/get_tasks/${date}`);
+                const tasks = await response.json();
+                const taskListDiv = document.getElementById('taskList');
+                taskListDiv.innerHTML = ''; // Clear existing tasks
+                currentSelectedTask = null; // Clear selection when date changes
+
+                if (tasks.length === 0) {
+                    taskListDiv.innerHTML = '<p class="text-gray-500 text-center py-4" id="noTasksMessage">No tasks for this date.</p>';
+                    return;
+                }
+
+                tasks.forEach((task, index) => {
+                    const taskItem = document.createElement('div');
+                    taskItem.className = `task-list-item ${task.completed ? 'opacity-60 line-through' : ''} flex justify-between items-center bg-gray-100 hover:bg-gray-200 rounded-md p-2 mb-1`;
+                    taskItem.innerHTML = `
+                        <span>${task.completed ? '&#9989;' : '&#10060;'} ${task.task} [${task.type}] ${task.hours > 0 ? '— ' + task.hours + 'h' : ''}</span>
+                    `;
+                    taskItem.dataset.index = index; // Store original index for easy lookup
+                    taskItem.onclick = () => selectTask(taskItem, task);
+                    taskListDiv.appendChild(taskItem);
+                });
+            } catch (error) {
+                console.error('Error fetching tasks:', error);
+                alert('Failed to load tasks. Please try again.');
+            }
+        }
+
+        function selectTask(taskItemElement, taskData) {
+            // Remove 'selected' class from previously selected item
+            document.querySelectorAll('.task-list-item').forEach(item => {
+                item.classList.remove('selected');
+                item.classList.remove('bg-accentLight', 'border', 'border-primaryMedium'); // Remove Tailwind classes
+            });
+
+            // Add 'selected' class to the clicked item
+            taskItemElement.classList.add('selected', 'bg-accentLight', 'border', 'border-primaryMedium');
+            currentSelectedTask = taskData; // Store the full task object
+        }
+
+        // --- Task Actions ---
+        async function addTask() {
+            const taskInput = document.getElementById('taskInput');
+            const typeDropdown = document.getElementById('typeDropdown');
+            const task = taskInput.value.trim();
+            const type = typeDropdown.value;
+
+            if (!task || !type) {
+                alert('Task and type are required.');
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('task', task);
+                formData.append('type', type);
+                formData.append('date', selectedDate);
+
+                const response = await fetch('/add_task', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                if (result.success) {
+                    taskInput.value = ''; // Clear input
+                    fetchTasksForDate(selectedDate); // Refresh list
+                } else {
+                    alert(result.message);
+                }
+            } catch (error) {
+                console.error('Error adding task:', error);
+                alert('Failed to add task. Please try again.');
+            }
+        }
+
+        async function markTaskDone() {
+            if (!currentSelectedTask) {
+                alert('Please select a task to mark as done.');
+                return;
+            }
+
+            if (currentSelectedTask.completed) {
+                alert('This task is already marked as complete.');
+                return;
+            }
+
+            const hoursWorkedInput = document.getElementById('hoursWorkedInput');
+            const hoursWorked = hoursWorkedInput.value.trim();
+
+            if (hoursWorked && isNaN(parseFloat(hoursWorked))) {
+                alert('Please enter a numeric value for hours worked.');
+                return;
+            }
+
+            showConfirmationModal('Mark Task as Done', `Are you sure you want to mark "${currentSelectedTask.task}" as done?`, async () => {
+                try {
+                    const formData = new FormData();
+                    formData.append('task_name', currentSelectedTask.task);
+                    formData.append('task_type', currentSelectedTask.type);
+                    formData.append('task_date', currentSelectedTask.date);
+                    formData.append('hours_worked', hoursWorked);
+
+                    const response = await fetch('/mark_done', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        hoursWorkedInput.value = ''; // Clear hours input
+                        fetchTasksForDate(selectedDate); // Refresh list
+                        closeConfirmationModal();
+                    } else {
+                        alert(result.message);
+                        closeConfirmationModal();
+                    }
+                } catch (error) {
+                    console.error('Error marking task done:', error);
+                    alert('Failed to mark task done. Please try again.');
+                    closeConfirmationModal();
+                }
+            });
+        }
+
+        async function removeTask() {
+            if (!currentSelectedTask) {
+                alert('Please select a task to remove.');
+                return;
+            }
+
+            showConfirmationModal('Remove Task', `Are you sure you want to remove "${currentSelectedTask.task}"? This action cannot be undone.`, async () => {
+                try {
+                    const formData = new FormData();
+                    formData.append('task_name', currentSelectedTask.task);
+                    formData.append('task_type', currentSelectedTask.type);
+                    formData.append('task_date', currentSelectedTask.date);
+                    formData.append('task_completed', currentSelectedTask.completed); // Pass completed status for robust matching
+
+                    const response = await fetch('/remove_task', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        fetchTasksForDate(selectedDate); // Refresh list
+                        closeConfirmationModal();
+                    } else {
+                        alert(result.message);
+                        closeConfirmationModal();
+                    }
+                } catch (error) {
+                    console.error('Error removing task:', error);
+                    alert('Failed to remove task. Please try again.');
+                    closeConfirmationModal();
+                }
+            });
+        }
+
+        async function removeAllTasks() {
+            showConfirmationModal('Remove All Tasks', `Are you sure you want to remove ALL tasks for ${selectedDate}? This action cannot be undone.`, async () => {
+                try {
+                    const response = await fetch(`/remove_all_tasks/${selectedDate}`, {
+                        method: 'POST'
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        fetchTasksForDate(selectedDate); // Refresh list
+                        closeConfirmationModal();
+                    } else {
+                        alert(result.message);
+                        closeConfirmationModal();
+                    }
+                } catch (error) {
+                    console.error('Error removing all tasks:', error);
+                    alert('Failed to remove all tasks. Please try again.');
+                    closeConfirmationModal();
+                }
+            });
+        }
+
+        // --- Type Management ---
+        function showAddTypePopup() {
+            document.getElementById('addTypeModal').classList.remove('hidden');
+            document.getElementById('newTypeInput').focus();
+        }
+
+        function closeAddTypePopup() {
+            document.getElementById('addTypeModal').classList.add('hidden');
+            document.getElementById('newTypeInput').value = '';
+        }
+
+        async function saveNewType() {
+            const newTypeInput = document.getElementById('newTypeInput');
+            const newType = newTypeInput.value.trim();
+
+            if (!newType) {
+                alert('Type name cannot be empty.');
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('new_type', newType);
+
+                const response = await fetch('/add_type', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                if (result.success) {
+                    await fetchTaskTypes(); // Refresh dropdown
+                    closeAddTypePopup();
+                } else {
+                    alert(result.message);
+                }
+            } catch (error) {
+                console.error('Error adding type:', error);
+                alert('Failed to add type. Please try again.');
+            }
+        }
+
+        async function fetchTaskTypes() {
+            try {
+                const response = await fetch('/get_types');
+                const types = await response.json();
+                const typeDropdown = document.getElementById('typeDropdown');
+                typeDropdown.innerHTML = ''; // Clear existing options
+                if (types.length > 0) {
+                    types.forEach(type => {
+                        const option = document.createElement('option');
+                        option.value = type;
+                        option.textContent = type;
+                        typeDropdown.appendChild(option);
+                    });
+                } else {
+                    typeDropdown.innerHTML = '<option value="">No types available</option>';
+                }
+            } catch (error) {
+                console.error('Error fetching types:', error);
+                alert('Failed to load task types.');
+            }
+        }
+
+        // --- Charting Logic ---
+        let taskHoursChart, dailyTimeChart, daysPerTypeChart; // Chart instances
+
+        async function refreshCharts() {
+            try {
+                const response = await fetch('/get_chart_data');
+                const chartData = await response.json();
+
+                const noActivityMessage = document.getElementById('noActivityMessage');
+                const chartContainer = document.getElementById('chartContainer');
+
+                if (Object.keys(chartData).every(key => chartData[key].labels.length === 0)) {
+                    noActivityMessage.classList.remove('hidden');
+                    chartContainer.classList.add('hidden');
+                    // Destroy existing charts if no data
+                    if (taskHoursChart) taskHoursChart.destroy();
+                    if (dailyTimeChart) dailyTimeChart.destroy();
+                    if (daysPerTypeChart) daysPerTypeChart.destroy();
+                    return;
+                } else {
+                    noActivityMessage.classList.add('hidden');
+                    chartContainer.classList.remove('hidden');
+                }
+
+                // Destroy existing charts before creating new ones
+                if (taskHoursChart) taskHoursChart.destroy();
+                if (dailyTimeChart) dailyTimeChart.destroy();
+                if (daysPerTypeChart) daysPerTypeChart.destroy();
+
+                // Chart 1: Hours Spent per Task
+                const ctx1 = document.getElementById('taskHoursChart').getContext('2d');
+                taskHoursChart = new Chart(ctx1, {
+                    type: 'bar',
+                    data: {
+                        labels: chartData.task_hours.labels,
+                        datasets: [{
+                            label: 'Hours',
+                            data: chartData.task_hours.data,
+                            backgroundColor: tailwind.config.theme.extend.colors.primaryMedium,
+                            borderColor: tailwind.config.theme.extend.colors.primaryDark,
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Hours'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    autoSkip: false,
+                                    maxRotation: 45,
+                                    minRotation: 45
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Hours Spent per Task'
+                            }
+                        }
+                    }
+                });
+
+                // Chart 2: Daily Time Spent
+                const ctx2 = document.getElementById('dailyTimeChart').getContext('2d');
+                dailyTimeChart = new Chart(ctx2, {
+                    type: 'line',
+                    data: {
+                        labels: chartData.daily_time.labels,
+                        datasets: [{
+                            label: 'Hours',
+                            data: chartData.daily_time.data,
+                            backgroundColor: tailwind.config.theme.extend.colors.primaryDark,
+                            borderColor: tailwind.config.theme.extend.colors.primaryDark,
+                            borderWidth: 2,
+                            tension: 0.1,
+                            pointBackgroundColor: tailwind.config.theme.extend.colors.primaryMedium
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Hours'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Date'
+                                },
+                                ticks: {
+                                    autoSkip: true,
+                                    maxRotation: 45,
+                                    minRotation: 45
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Daily Time Spent'
+                            }
+                        }
+                    }
+                });
+
+                // Chart 3: Days Worked per Task Type
+                const ctx3 = document.getElementById('daysPerTypeChart').getContext('2d');
+                daysPerTypeChart = new Chart(ctx3, {
+                    type: 'bar',
+                    data: {
+                        labels: chartData.days_per_type.labels,
+                        datasets: [{
+                            label: 'Days',
+                            data: chartData.days_per_type.data,
+                            backgroundColor: tailwind.config.theme.extend.colors.accentLight,
+                            borderColor: tailwind.config.theme.extend.colors.primaryMedium,
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Days'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    autoSkip: false,
+                                    maxRotation: 45,
+                                    minRotation: 45
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Days Worked per Task Type'
+                            }
+                        }
+                    }
+                });
+
+            } catch (error) {
+                console.error('Error refreshing charts:', error);
+                alert('Failed to load chart data. Please try again.');
+            }
+        }
+
+        // --- Export Data ---
+        async function exportData(format) {
+            try {
+                const response = await fetch(`/export_data/${format}`);
+                const result = await response.json();
+                if (result.success) {
+                    alert(result.message); // In a full implementation, this would trigger a file download
+                } else {
+                    alert(result.message);
+                }
+            } catch (error) {
+                console.error('Error exporting data:', error);
+                alert('Failed to export data. Please try again.');
+            }
+        }
+
+        // --- Confirmation Modal Logic ---
+        let confirmActionCallback = null;
+
+        function showConfirmationModal(title, message, callback) {
+            document.getElementById('confirmationModalTitle').innerText = title;
+            document.getElementById('confirmationModalMessage').innerText = message;
+            confirmActionCallback = callback;
+            document.getElementById('confirmationModal').classList.remove('hidden');
+        }
+
+        function closeConfirmationModal() {
+            document.getElementById('confirmationModal').classList.add('hidden');
+            confirmActionCallback = null;
+        }
+
+        document.getElementById('confirmActionButton').onclick = () => {
+            if (confirmActionCallback) {
+                confirmActionCallback();
+            }
+        };
+
+        // --- Initial Load ---
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchTasksForDate(selectedDate); // Load tasks for the initial date
+            fetchTaskTypes(); // Load task types
+            showTab('calendarTab'); // Ensure calendar tab is shown initially
+        });
+
+        // Keyboard navigation for task list (simulated)
+        document.getElementById('taskList').addEventListener('keydown', (e) => {
+            const taskItems = Array.from(document.querySelectorAll('.task-list-item'));
+            if (taskItems.length === 0) return;
+
+            let currentIndex = -1;
+            for (let i = 0; i < taskItems.length; i++) {
+                if (taskItems[i].classList.contains('selected')) {
+                    currentIndex = i;
+                    break;
+                }
+            }
+
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                const newIndex = Math.max(0, currentIndex - 1);
+                if (newIndex !== currentIndex) {
+                    taskItems[newIndex].click(); // Simulate click to select
+                    taskItems[newIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                const newIndex = Math.min(taskItems.length - 1, currentIndex + 1);
+                if (newIndex !== currentIndex) {
+                    taskItems[newIndex].click(); // Simulate click to select
+                    taskItems[newIndex].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }
+        });
+
+        // Make task list focusable for keyboard navigation
+        document.getElementById('taskList').setAttribute('tabindex', '0');
+
+    </script>
+</body>
+</html>
